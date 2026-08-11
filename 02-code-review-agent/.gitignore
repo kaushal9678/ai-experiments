@@ -1,0 +1,38 @@
+# Environment variables (SECURITY RISK)
+.env
+*.env
+
+# ChromaDB local storage
+chroma_db/
+*.db
+*.sqlite
+*.sqlite3
+
+# Binaries
+code-review-agent
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+main
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS Specific
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Go temporary files
+go-build/
+tmp/
+*.log
