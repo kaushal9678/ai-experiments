@@ -5,20 +5,20 @@ This project provides a fully local, context-aware AI Code Review Agent designed
 ## 🚀 What This Repository Does
 This repository serves as a fully functional, privacy-first AI reviewer for software engineering teams using Azure DevOps. Instead of sending sensitive proprietary source code to cloud APIs like OpenAI or GitHub Copilot, this project runs entirely on your local hardware.
 
-When a developer opens a Pull Request, you can run this agent in your terminal. It will securely pull the PR diff from ADO, index your entire local repository into a vector database, and use semantic search to extract relevant architectural context. It then passes the PR Diff, the architectural context, and the original User Story ticket to a local Large Language Model (`qwen2.5-coder:14b`). The LLM acts as a Senior Developer, aggressively scrutinizing the logic, and the script automatically posts its feedback as inline threads directly onto the modified lines of code in ADO.
+When a developer opens a Pull Request, you can run this agent in your terminal. It will securely pull the PR diff from ADO, index your entire local repository into a vector database, and use semantic search to extract relevant architectural context. It then passes the PR Diff, the architectural context, and the original User Story ticket to a local Large Language Model (`qwen3.6:27b`). The LLM acts as a Senior Developer, aggressively scrutinizing the logic, and the script automatically posts its feedback as inline threads directly onto the modified lines of code in ADO.
 
 ## 🧠 What I Learned
 Building this project provided deep hands-on experience with modern AI engineering techniques and Go programming:
 1. **Retrieval-Augmented Generation (RAG) on Code**: I learned how to overcome the context-window limitations of LLMs by breaking an entire codebase into semantic chunks, converting them into mathematical vectors, and using semantic search to retrieve only the files relevant to the active PR.
 2. **Vector Databases (ChromaDB)**: I gained experience setting up and interacting with ChromaDB's REST APIs in Go, including managing batch limits (sending 100 chunks at a time) to prevent TCP broken pipe errors on massive repositories.
-3. **Navigating LLM Limitations**: Small, quantized models (like 14B or 6.7B parameter models) are highly capable but can easily get confused by RAG context or fail at strict formatting. I learned how to engineer robust fallbacks (graceful JSON failure handling) and apply aggressive negative constraints in prompts to tame them.
+3. **Navigating JSON Hallucinations**: Small, quantized local models (like 6.7B or 8B) may occasionally struggle to follow strict JSON formatting. If the AI returns an invalid JSON schema, the script will gracefully print a warning and skip the inline comments rather than crashing. **Recommendation:** Stick to `qwen3.6:27b` or larger models for best results.
 4. **Complex External APIs**: Posting a simple comment in Azure DevOps requires a surprisingly deep understanding of their nested `threadContext` payloads to accurately pin feedback to a specific line in a diff.
 5. **Why Go Instead of Python?**: While Python is the AI standard, building this in Go allowed for blazing fast disk I/O (cloning and chunking thousands of files), robust static typing (safely unmarshaling complex LLM JSON and ADO responses), and frictionless distribution (compiling to a single binary for my team).
 
-## 🤖 Why Qwen2.5-Coder instead of DeepSeek-Coder?
-Early iterations of this agent utilized `deepseek-coder:6.7b` because of its speed and efficiency. However, it was ultimately replaced by `qwen2.5-coder:14b` for two critical reasons:
+## 🤖 Why Qwen3.6 instead of DeepSeek-Coder?
+Early iterations of this agent utilized `deepseek-coder:6.7b` because of its speed and efficiency. However, it was ultimately replaced by `qwen3.6:27b` for two critical reasons:
 1. **JSON Formatting Failures**: DeepSeek-Coder repeatedly struggled to adhere to the strict JSON array schema required by the Go backend. It would frequently hallucinate dictionary wrappers (`{"results": [...]}`) or return plain text, causing the parser to crash or skip comments.
-2. **Reasoning with RAG**: Reviewing a PR requires the LLM to juggle three complex inputs simultaneously: the actual Git Diff, the surrounding RAG architecture context, and the business ticket requirements. The 6.7B DeepSeek model often got "distracted" by the RAG context and attempted to review files that weren't even in the PR. The `qwen2.5-coder:14b` model fits perfectly within a 16GB RAM Mac environment while offering significantly higher reasoning capabilities to strictly adhere to the prompt's guardrails.
+2. **Reasoning with RAG**: Reviewing a PR requires the LLM to juggle three complex inputs simultaneously: the actual Git Diff, the surrounding RAG architecture context, and the business ticket requirements. The 6.7B DeepSeek model often got "distracted" by the RAG context and attempted to review files that weren't even in the PR. The `qwen3.6:27b` model fits perfectly within a 32GB RAM Windows environment while offering significantly higher reasoning capabilities to strictly adhere to the prompt's guardrails.
 
 ## 🏗️ Architecture & Data Flow
 
@@ -47,7 +47,7 @@ sequenceDiagram
 
     rect rgb(40, 20, 60)
         Note over M,AI: AI Code Review
-        M->>AI: Send Diff + RAG Context + Story Ticket (qwen2.5-coder:14b)
+        M->>AI: Send Diff + RAG Context + Story Ticket (qwen3.6:27b)
         AI-->>M: Return Strict JSON Array of Code Reviews
     end
 
@@ -58,7 +58,7 @@ sequenceDiagram
 ## 🔍 How It Works
 
 ### 1. Context Injection (RAG Pipeline)
-LLMs cannot fit an entire enterprise codebase into their context window. To solve this, `indexer.go` crawls the repository and splits the code into smaller chunks. We then use Ollama's `nomic-embed-text` to turn those chunks into vectors and store them in ChromaDB. 
+LLMs cannot fit an entire enterprise codebase into their context window. To solve this, `indexer.go` crawls the repository and splits the code into smaller chunks. We then use Ollama's `mxbai-embed-large` to turn those chunks into vectors and store them in ChromaDB. 
 When reviewing a PR, `database.go` embeds the PR's `diff` text and searches ChromaDB for the Top 3 most semantically similar code chunks. This gives the AI the "Surrounding Codebase Context" it needs to understand the architecture without exceeding token limits.
 
 ### 2. Code Review & Guardrails
@@ -86,10 +86,10 @@ Once the JSON is verified and parsed by Go, `commenter.go` iterates through the 
 You must pull the required models into Ollama before running the agent:
 ```bash
 # Pull the embedding model used for ChromaDB vector search
-ollama pull nomic-embed-text
+ollama pull mxbai-embed-large
 
 # Pull the primary LLM used for Code Review logic
-ollama pull qwen2.5-coder:14b
+ollama pull qwen3.6:27b
 ```
 
 ### 3. Spin up ChromaDB

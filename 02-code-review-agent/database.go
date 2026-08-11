@@ -93,7 +93,7 @@ func IndexRepository(repoPath, repoName string) error {
 		}
 		
 		reqBody, _ := json.Marshal(map[string]interface{}{
-			"model":  "nomic-embed-text",
+			"model":  "mxbai-embed-large",
 			"prompt": doc,
 		})
 

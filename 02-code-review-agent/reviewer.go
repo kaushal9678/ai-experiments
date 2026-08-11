@@ -40,7 +40,7 @@ func ReviewCode(tempDir, org, project, repoName, pat, sourceBranch, storyContext
 	}
 
 	// 3. Send to AI via Ollama
-	fmt.Println("🧠 Sending Diff and RAG Context to qwen2.5-coder:14b (This may take a minute)...")
+	fmt.Println("🧠 Sending Diff and RAG Context to qwen3.6:27b (This may take a minute)...")
 	reviewComments, err := generateAIReview(diff, contextData, storyContext)
 	if err != nil {
 		return nil, err
@@ -100,7 +100,7 @@ func fetchContextFromDB(repoName string, diff string) (string, error) {
 	}
 
 	reqBody, _ := json.Marshal(map[string]interface{}{
-		"model":  "nomic-embed-text",
+		"model":  "mxbai-embed-large",
 		"prompt": queryText,
 	})
 
@@ -218,7 +218,7 @@ EXAMPLE OUTPUT:
 }`, diff, codeContext, storyText)
 
 	reqBody, _ := json.Marshal(map[string]interface{}{
-		"model":  "qwen2.5-coder:14b",
+		"model":  "qwen3.6:27b",
 		"messages": []map[string]string{
 			{
 				"role":    "user",
